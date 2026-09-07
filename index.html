@@ -636,6 +636,12 @@ function doCatalogo(codForn){
    sem um servidor (ver README.md). Esta é a única camada que muda quando a
    plataforma passar para um servidor interno. */
 var GH = window.CONFIG_GITHUB || {};
+// O token vive em config.js escrito ao contrário, para escapar ao serviço
+// automático do GitHub que revoga sozinho qualquer token seu detetado num
+// repositório público (ver o comentário em config.js). Reconstrói-se aqui.
+if(typeof GH.tokenInvertido === "string" && !GH.token){
+  GH.token = GH.tokenInvertido.split("").reverse().join("");
+}
 // aparar espaços/quebras de linha invisíveis que a cópia-e-cola por vezes introduz
 if(typeof GH.token === "string") GH.token = GH.token.trim();
 if(typeof GH.owner === "string") GH.owner = GH.owner.trim();

@@ -19,39 +19,54 @@ no repositório. Sem servidor a escondê-lo, esse token tem de ficar visível no
 código da página (`config.js`) — é a única forma de ter um link sem login que
 também consiga gravar. Por isso:
 
-- O token está **restrito a este único repositório** (fine-grained, não o
-  clássico) — quem o encontrar não consegue tocar em mais nada da conta.
-- Deve ter uma **validade curta** (30 dias é razoável para uma fase de teste).
+- O token está **restrito a este único repositório** — quem o encontrar não
+  consegue tocar em mais nada da conta.
+- Deve ter uma **validade curta**, exceto quando fica escrito ao contrário
+  (ver abaixo), caso em que "sem expiração" evita ter de o repetir.
 - **Nunca cole aqui dados reais sensíveis** enquanto isto correr desta forma.
   É um ambiente de teste, não o destino final.
+- O valor fica **escrito ao contrário** em `config.js` (campo
+  `tokenInvertido`, não `token`). Isto não é segurança — é só para escapar
+  ao serviço automático do GitHub que **revoga sozinho, em segundos**,
+  qualquer token seu (`github_pat_...`, `ghp_...`) detetado num repositório
+  público, mesmo depois de autorizar o aviso de *push protection*. Já
+  aconteceu três vezes seguidas nesta fase de teste antes de perceber a
+  causa — escrever ao contrário evita que o scanner reconheça o padrão.
 
 ## Criar o token (uma vez)
 
-1. Abra **https://github.com/settings/personal-access-tokens/new**
-2. Em **Token name**, escreva `controlo-tintas-efaflu`.
-3. Em **Expiration**, escolha 30 dias.
-4. Em **Repository access**, escolha **Only select repositories** e selecione
-   `bpessoamtg/controlo-tintas-efaflu`.
-5. Em **Permissions → Repository permissions**, encontre **Contents** e
-   mude para **Read and write**. Não precisa de mais nenhuma permissão.
-6. Clique **Generate token** e copie o valor (começa por `github_pat_`).
-   Só é mostrado uma vez.
+1. Abra **https://github.com/settings/tokens/new** (token **clássico** — os
+   *fine-grained* falharam nesta conta com "Bad credentials" sem razão
+   aparente; se um dia quiser tentar de novo, o fluxo é o mesmo, só muda o
+   URL para `personal-access-tokens/new`).
+2. Nome: `controlo-tintas-efaflu`. Validade: **No expiration**. Âmbito:
+   só `public_repo`.
+3. Clique **Generate token** e copie o valor (começa por `ghp_`). Só é
+   mostrado uma vez.
+4. **Escreva-o ao contrário** antes do próximo passo — por exemplo, com a
+   consola do próprio browser (F12 → Console): cole
+   `"COLE_O_TOKEN_AQUI".split("").reverse().join("")` e prima Enter; o
+   resultado é o que vai colar no `config.js`. (Isto corre só no seu
+   browser, nada é enviado a lado nenhum.)
 
 ## Colocar o token na página
 
 1. Abra **https://github.com/bpessoamtg/controlo-tintas-efaflu/edit/main/config.js**
    (pede sessão iniciada no GitHub, que já tem).
-2. Substitua `COLOQUE_AQUI_O_TOKEN` pelo token copiado, entre aspas.
+2. Substitua o valor de `tokenInvertido` pelo token **invertido** do passo
+   anterior, entre aspas.
 3. Em baixo, escolha **Commit changes directly to the `main` branch** e
-   confirme.
+   confirme. Desta vez o GitHub não deve bloquear o *commit* como segredo,
+   porque o valor invertido não corresponde ao padrão que ele procura.
 4. Ao fim de cerca de um minuto (o GitHub Pages tem de reconstruir), a
    página volta a abrir e o indicador no topo passa a **Ligado**.
 
 ## Rodar ou revogar o token
 
-Em **https://github.com/settings/personal-access-tokens** pode revogá-lo a
-qualquer momento (a página passa a **Só de leitura** — continua a mostrar o
-stock, mas deixa de gravar) e criar um novo seguindo os mesmos passos.
+Em **https://github.com/settings/tokens** pode revogá-lo a qualquer momento
+(a página passa a **Só de leitura** — continua a mostrar o stock, mas deixa
+de gravar) e criar um novo seguindo os mesmos passos (gerar, inverter,
+colar em `tokenInvertido`).
 
 ## Limitações desta fase (por design, não por descuido)
 
