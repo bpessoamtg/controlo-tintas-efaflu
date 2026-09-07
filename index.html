@@ -1,0 +1,1831 @@
+<title>Controlo de Tintas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  /* Paleta EFAFLU — azul-noite #11202D (estrutura) e vermelho #AA1F2E (marca e alerta de validade) */
+  --ground:#F4F7F9; --surface:#FFFFFF; --surface-2:#FAFCFD; --surface-3:#EEF3F6;
+  --line:#E1E8ED; --line-strong:#C7D2DA;
+  --ink:#11202D; --ink-2:#4E5F6E; --ink-3:#7C8B98;
+  --accent:#11202D; --accent-2:#1E3B54; --accent-ink:#FFFFFF; --accent-soft:#EAF0F5;
+  --marca:#AA1F2E; --marca-viva:#DE2021;
+  --ok:#1E7551; --ok-bg:#EAF6F0; --ok-line:#B4DAC6;
+  --warn:#96600A; --warn-bg:#FDF4E4; --warn-line:#EACFA0;
+  --bad:#AA1F2E; --bad-bg:#FCEDEE; --bad-line:#EAB8BE;
+  --shadow:0 1px 2px rgba(17,32,45,.04), 0 4px 14px rgba(17,32,45,.05);
+  --r:10px;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-text-size-adjust:100%;
+}
+h1,h2,h3{font-family:Archivo,system-ui,sans-serif; margin:0; text-wrap:balance; letter-spacing:-.012em}
+button,input,select,textarea{font:inherit; color:inherit}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- chrome ---------- */
+.topo{
+  position:sticky; top:0; z-index:40; background:var(--surface);
+  border-bottom:1px solid var(--line); border-top:3px solid var(--marca);
+}
+.topo-in{
+  max-width:1180px; margin:0 auto; padding:10px 16px;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+}
+.marca{display:flex; align-items:center; gap:10px; margin-right:auto; min-width:0}
+.marca svg{flex:none; color:var(--marca)}
+.marca h1{font-size:17px; font-weight:700; line-height:1.15}
+.marca p{margin:0; font-size:11px; color:var(--ink-3); letter-spacing:.09em; text-transform:uppercase; font-weight:500}
+.op{display:flex; align-items:center; gap:8px}
+.op label{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:600}
+.op input{
+  width:150px; padding:7px 10px; border:1px solid var(--line-strong); border-radius:8px;
+  background:var(--surface-2);
+}
+.estado-guardar{
+  display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-3);
+  padding:6px 10px; border-radius:99px; background:var(--surface-2); border:1px solid var(--line);
+  white-space:nowrap;
+}
+.pt{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+.estado-guardar[data-m="local"] .pt{background:var(--warn)}
+.estado-guardar[data-m="erro"] .pt{background:var(--bad)}
+.estado-guardar[data-m="ocupado"] .pt{background:var(--accent-2); animation:pulsar 1s infinite}
+@keyframes pulsar{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.estado-guardar[data-m="ocupado"] .pt{animation:none}}
+
+/* ---------- separadores ---------- */
+.abas{background:var(--surface); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:35}
+.abas-in{max-width:1180px; margin:0 auto; padding:0 10px; display:flex; gap:2px; overflow-x:auto}
+.aba{
+  appearance:none; background:none; border:0; border-bottom:3px solid transparent;
+  padding:13px 14px 11px; cursor:pointer; color:var(--ink-2); font-weight:600; font-size:14px;
+  display:flex; align-items:center; gap:9px; white-space:nowrap; min-height:52px;
+  font-family:Archivo,sans-serif;
+}
+.aba:hover{color:var(--ink); background:var(--surface-2)}
+.aba[aria-selected="true"]{color:var(--accent-2); border-bottom-color:var(--accent-2)}
+.aba:focus-visible{outline:2px solid var(--accent-2); outline-offset:-3px}
+.aba .cnt{
+  min-width:22px; height:22px; padding:0 6px; border-radius:99px; display:grid; place-items:center;
+  font-size:12px; font-weight:700; background:var(--surface-3); color:var(--ink-2);
+  font-variant-numeric:tabular-nums;
+}
+.aba.alerta{color:var(--bad)}
+.aba.alerta[aria-selected="true"]{border-bottom-color:var(--bad)}
+.aba.alerta .cnt{background:var(--bad); color:#fff}
+.aba .cnt.vermelho{background:var(--bad); color:#fff}
+.aba .cnt[hidden]{display:none}
+
+main{max-width:1180px; margin:0 auto; padding:20px 16px 90px}
+.painel[hidden]{display:none}
+
+/* ---------- blocos ---------- */
+.cartao{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
+.sec-tit{
+  font-size:11px; text-transform:uppercase; letter-spacing:.1em; font-weight:600; color:var(--ink-3);
+  margin:0 0 10px; font-family:"IBM Plex Sans",sans-serif;
+}
+.grelha{display:grid; gap:20px; grid-template-columns:minmax(0,340px) minmax(0,1fr)}
+@media (max-width:860px){.grelha{grid-template-columns:1fr}}
+
+form.rec{padding:18px; display:grid; gap:14px}
+.campo{display:grid; gap:5px}
+.campo label{font-size:12px; font-weight:600; color:var(--ink-2); letter-spacing:.01em}
+.campo .aj{font-size:11.5px; color:var(--ink-3)}
+input[type=text],input[type=date],input[type=number],textarea,select{
+  width:100%; padding:11px 12px; border:1px solid var(--line-strong); border-radius:8px;
+  background:var(--surface-2); min-height:44px;
+}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{
+  outline:2px solid var(--accent-2); outline-offset:1px;
+}
+.dupla{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.resolvido{
+  border:1px dashed var(--line-strong); border-radius:8px; padding:10px 12px; background:var(--surface-2);
+  font-size:13px; display:grid; gap:3px;
+}
+.resolvido b{font-family:Archivo,sans-serif; font-size:14px}
+.resolvido.ok{border-style:solid; border-color:var(--ok-line); background:var(--ok-bg)}
+.resolvido.novo{border-color:var(--warn-line); background:var(--warn-bg)}
+
+.foto-zona{
+  border:1px dashed var(--line-strong); border-radius:var(--r); background:var(--surface-2);
+  padding:14px; display:grid; gap:10px; justify-items:center; text-align:center;
+}
+.foto-zona img{max-width:100%; max-height:240px; border-radius:8px; border:1px solid var(--line)}
+.foto-zona p{margin:0; font-size:12.5px; color:var(--ink-3); max-width:34ch}
+
+/* ---------- botões ---------- */
+.btn{
+  appearance:none; border:1px solid var(--line-strong); background:var(--surface-2); color:var(--ink);
+  padding:11px 16px; border-radius:8px; font-weight:600; cursor:pointer; min-height:44px;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px; font-size:14px;
+}
+.btn:hover{background:var(--surface-3)}
+.btn.pri{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn.pri:hover{background:var(--accent-2); border-color:var(--accent-2)}
+.btn.perigo{background:var(--bad); border-color:var(--bad); color:#fff}
+.btn.perigo:hover{filter:brightness(1.08)}
+.btn.pequeno{padding:8px 12px; min-height:38px; font-size:13px}
+.btn[disabled]{opacity:.45; cursor:not-allowed}
+.btn.fantasma{background:transparent; border-color:transparent; color:var(--ink-2)}
+.btn.fantasma:hover{background:var(--surface-2)}
+
+/* ---------- pesquisa ---------- */
+.barra-pesq{display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap}
+.pesq{position:relative; flex:1; min-width:220px}
+.pesq input{padding-left:38px}
+.pesq svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ink-3)}
+
+/* ---------- listas ---------- */
+.lista{display:grid; gap:10px}
+.tinta{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  overflow:hidden; box-shadow:var(--shadow);
+}
+.tinta-cab{padding:12px 14px; border-bottom:1px solid var(--line); background:var(--surface-2)}
+.tinta-cab .cod{font-size:12.5px; color:var(--accent-2); font-weight:600}
+.tinta-cab h3{font-size:16px; margin-top:1px}
+.tinta-cab .sub{font-size:12px; color:var(--ink-3); margin-top:2px}
+
+.linha{
+  display:grid; grid-template-columns:4px minmax(0,1fr) auto; align-items:center;
+  border-top:1px solid var(--line);
+}
+.tinta .linha:first-of-type{border-top:0}
+.faixa{align-self:stretch; background:var(--line-strong)}
+.linha.st-ok .faixa{background:var(--ok)}
+.linha.st-warn .faixa{background:var(--warn)}
+.linha.st-bad .faixa{background:var(--bad)}
+.linha.st-bloq{background:var(--surface-2)}
+.linha-corpo{padding:12px 14px; display:grid; gap:5px; min-width:0}
+.linha-acao{padding:12px 14px 12px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
+@media (max-width:640px){
+  .linha{grid-template-columns:4px minmax(0,1fr)}
+  .linha-acao{grid-column:2; padding:0 14px 12px; justify-content:stretch}
+  .linha-acao .btn{flex:1}
+}
+.dados{display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:var(--ink-2)}
+.dados span{display:inline-flex; gap:6px; align-items:baseline}
+.dados i{font-style:normal; font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-3); font-weight:600}
+.dados b{font-family:"IBM Plex Mono",monospace; font-weight:500; font-variant-numeric:tabular-nums}
+
+.selo{
+  display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:99px;
+  font-size:11.5px; font-weight:600; border:1px solid transparent; white-space:nowrap;
+}
+.selo.ok{background:var(--ok-bg); color:var(--ok); border-color:var(--ok-line)}
+.selo.warn{background:var(--warn-bg); color:var(--warn); border-color:var(--warn-line)}
+.selo.bad{background:var(--bad-bg); color:var(--bad); border-color:var(--bad-line)}
+.selo.neutro{background:var(--surface-3); color:var(--ink-2); border-color:var(--line)}
+.selo.destaque{background:var(--accent-soft); color:var(--accent-2); border-color:var(--accent-2)}
+
+.nota-bloq{font-size:12.5px; color:var(--ink-3); display:flex; gap:6px; align-items:center}
+.nota-bloq svg{flex:none; color:var(--warn)}
+
+/* ---------- histórico ---------- */
+.filtros{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px}
+.fchip{
+  appearance:none; border:1px solid var(--line-strong); background:var(--surface);
+  color:var(--ink-2); padding:7px 14px; border-radius:99px; font-size:13px; font-weight:600;
+  cursor:pointer; min-height:36px;
+}
+.fchip:hover{background:var(--surface-3)}
+.fchip[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.tabela-env{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  box-shadow:var(--shadow); overflow-x:auto;
+}
+table.hist{border-collapse:collapse; width:100%; min-width:760px; font-size:13.5px}
+table.hist th{
+  text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--ink-3); font-weight:600; padding:11px 14px; border-bottom:1px solid var(--line);
+  background:var(--surface-2); position:sticky; top:0; white-space:nowrap;
+}
+table.hist td{padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+table.hist tr:last-child td{border-bottom:0}
+table.hist tbody tr:hover{background:var(--surface-2)}
+td.quando{white-space:nowrap; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; color:var(--ink-2)}
+td.quando small{display:block; color:var(--ink-3); font-size:11.5px}
+td.artigo b{display:block; font-weight:600}
+td.artigo small{color:var(--ink-3); font-family:"IBM Plex Mono",monospace; font-size:11.5px}
+td.detalhe{color:var(--ink-3); font-size:12.5px; max-width:34ch}
+.mov{
+  display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:99px;
+  font-size:11.5px; font-weight:600; white-space:nowrap; border:1px solid transparent;
+}
+.mov::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor}
+.mov.entrada{background:var(--accent-soft); color:var(--accent-2); border-color:#C9D8E4}
+.mov.abertura{background:var(--ok-bg); color:var(--ok); border-color:var(--ok-line)}
+.mov.consumo{background:var(--surface-3); color:var(--ink-2); border-color:var(--line-strong)}
+.mov.sucata{background:var(--bad-bg); color:var(--bad); border-color:var(--bad-line)}
+.mov.anulacao{background:var(--warn-bg); color:var(--warn); border-color:var(--warn-line)}
+.mov.reversao{background:var(--surface-3); color:var(--ink-3); border-color:var(--line-strong)}
+td.acao-mov{text-align:right; white-space:nowrap}
+.bloq-mov{font-size:11.5px; color:var(--ink-3); font-style:italic}
+.nota-admin{font-size:12.5px; color:var(--ink-3); margin:0 2px 12px; max-width:78ch}
+.caixa-info.alerta-caixa{border-color:var(--bad-line); background:var(--bad-bg); color:var(--bad)}
+.resumo-hist{
+  display:flex; gap:18px; flex-wrap:wrap; margin-bottom:14px; font-size:12.5px; color:var(--ink-3);
+}
+.resumo-hist b{color:var(--ink); font-variant-numeric:tabular-nums}
+
+.vazio{
+  padding:44px 24px; text-align:center; color:var(--ink-3); background:var(--surface);
+  border:1px dashed var(--line-strong); border-radius:var(--r);
+}
+.vazio h3{font-size:16px; color:var(--ink-2); margin-bottom:6px}
+.vazio p{margin:0 auto; max-width:46ch; font-size:13.5px}
+
+.aviso{
+  padding:12px 14px; border-radius:var(--r); font-size:13px; display:flex; gap:10px; align-items:flex-start;
+  border:1px solid var(--warn-line); background:var(--warn-bg); color:var(--warn); margin-bottom:14px;
+}
+.aviso svg{flex:none; margin-top:1px}
+.aviso.mau{border-color:var(--bad-line); background:var(--bad-bg); color:var(--bad)}
+.aviso b{display:block; font-family:Archivo,sans-serif}
+.aviso a{color:inherit}
+
+/* histórico / rodapé */
+.rec-lista{display:grid; gap:8px; max-height:520px; overflow:auto; padding-right:2px}
+.rec-item{
+  display:grid; grid-template-columns:52px minmax(0,1fr) auto; gap:12px; align-items:center;
+  padding:10px 12px; background:var(--surface); border:1px solid var(--line); border-radius:8px;
+}
+.rec-item .mini{width:52px; height:52px; border-radius:6px; object-fit:cover; border:1px solid var(--line); background:var(--surface-3)}
+.rec-item .mini.sem{display:grid; place-items:center; color:var(--ink-3); font-size:10px; text-align:center; line-height:1.1}
+
+.ferramentas{
+  margin-top:26px; padding-top:16px; border-top:1px solid var(--line);
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+}
+.ferramentas .esp{margin-left:auto; font-size:12px; color:var(--ink-3)}
+
+dialog{
+  border:1px solid var(--line); border-radius:14px; padding:0; background:var(--surface); color:var(--ink);
+  max-width:min(520px,calc(100vw - 32px)); width:100%; box-shadow:0 24px 60px rgba(8,18,24,.35);
+}
+dialog::backdrop{background:rgba(8,18,24,.55)}
+.dlg-in{padding:22px}
+.dlg-in h2{font-size:19px; margin-bottom:10px}
+.dlg-in .corpo{font-size:14px; color:var(--ink-2); display:grid; gap:10px}
+.dlg-acoes{display:flex; gap:10px; justify-content:flex-end; padding:14px 22px; border-top:1px solid var(--line); background:var(--surface-2); flex-wrap:wrap}
+.caixa-info{background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:13px}
+
+.toast{
+  position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+  background:var(--ink); color:var(--ground); padding:12px 18px; border-radius:99px;
+  font-size:14px; font-weight:600; z-index:80; box-shadow:0 10px 30px rgba(0,0,0,.3);
+  max-width:calc(100vw - 32px); text-align:center;
+}
+.toast[hidden]{display:none}
+.esconder{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+</style>
+
+<!-- o stock fica em dados/estado.json, lido pela API do GitHub -->
+
+<header class="topo">
+  <div class="topo-in">
+    <div class="marca">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+        <path d="M6 8h12v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V8Z"/>
+        <path d="M5 5.5A1.5 1.5 0 0 1 6.5 4h11A1.5 1.5 0 0 1 19 5.5V8H5V5.5Z"/>
+        <path d="M9.5 12.5h5M9.5 16h3"/>
+      </svg>
+      <div>
+        <h1>Controlo de Tintas</h1>
+        <p>Receção · Stock · Validades</p>
+      </div>
+    </div>
+    <div class="op">
+      <label for="operador">Operador</label>
+      <input id="operador" type="text" placeholder="Nome" autocomplete="off">
+    </div>
+    <div class="estado-guardar" id="estadoGuardar" data-m="ok"><span class="pt"></span><span id="estadoTxt">Pronto</span></div>
+  </div>
+</header>
+
+<nav class="abas" aria-label="Secções">
+  <div class="abas-in" role="tablist">
+    <button class="aba" role="tab" id="t-rececao" aria-controls="p-rececao" aria-selected="true" data-aba="rececao">Receção</button>
+    <button class="aba" role="tab" id="t-fechadas" aria-controls="p-fechadas" aria-selected="false" data-aba="fechadas">Latas fechadas <span class="cnt" id="cnt-fechadas" hidden></span><span class="cnt vermelho" id="cnt-fechadas-fora" title="Fora de validade" hidden></span></button>
+    <button class="aba" role="tab" id="t-abertas" aria-controls="p-abertas" aria-selected="false" data-aba="abertas">Latas abertas <span class="cnt" id="cnt-abertas" hidden></span></button>
+    <button class="aba" role="tab" id="t-fora" aria-controls="p-fora" aria-selected="false" data-aba="fora">Fora de validade <span class="cnt" id="cnt-fora" hidden></span></button>
+    <button class="aba" role="tab" id="t-historico" aria-controls="p-historico" aria-selected="false" data-aba="historico">Histórico</button>
+  </div>
+</nav>
+
+<main>
+  <div class="painel" id="p-rececao" role="tabpanel" aria-labelledby="t-rececao">
+    <div id="avisoModo"></div>
+    <div class="grelha">
+      <section>
+        <h2 class="sec-tit">Registar entrada</h2>
+        <form class="rec cartao" id="formRec" autocomplete="off">
+          <div class="foto-zona">
+            <div id="fotoPre"></div>
+            <input type="file" id="fotoInput" accept="image/*" capture="environment" class="esconder">
+            <button type="button" class="btn" id="btnFoto">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-9Z"/><circle cx="12" cy="12.5" r="3.2"/></svg>
+              Fotografar a lata
+            </button>
+            <p id="fotoAjuda">Fotografe a zona da etiqueta com o código, lote e validade. A foto fica anexada ao registo como prova; os campos abaixo são preenchidos por si.</p>
+          </div>
+
+          <div class="campo">
+            <label for="fCodForn">Código do fornecedor</label>
+            <input type="text" id="fCodForn" list="dlCodForn" required placeholder="ex.: RAL7016-2K">
+            <datalist id="dlCodForn"></datalist>
+            <div class="resolvido" id="resolvido">Introduza o código do fornecedor para o associar ao artigo interno.</div>
+          </div>
+
+          <div id="camposManuais" hidden>
+            <div class="dupla">
+              <div class="campo">
+                <label for="fCodInt">Código interno</label>
+                <input type="text" id="fCodInt" placeholder="ex.: TNT-0042">
+              </div>
+              <div class="campo">
+                <label for="fFornecedor">Fornecedor</label>
+                <input type="text" id="fFornecedor" placeholder="ex.: Hempel">
+              </div>
+            </div>
+            <div class="campo" style="margin-top:12px">
+              <label for="fDescr">Descrição interna</label>
+              <input type="text" id="fDescr" placeholder="ex.: Esmalte poliuretano RAL 7016 acetinado">
+            </div>
+          </div>
+
+          <div class="dupla">
+            <div class="campo">
+              <label for="fLote">Lote</label>
+              <input type="text" id="fLote" required placeholder="ex.: L2408-771">
+            </div>
+            <div class="campo">
+              <label for="fVal">Validade</label>
+              <input type="date" id="fVal" required>
+            </div>
+          </div>
+
+          <div class="dupla">
+            <div class="campo">
+              <label for="fQtd">Quantidade de latas</label>
+              <input type="number" id="fQtd" min="1" max="500" step="1" value="1" required>
+            </div>
+            <div class="campo">
+              <label for="fVol">Volume por lata</label>
+              <input type="text" id="fVol" placeholder="ex.: 20 L">
+            </div>
+          </div>
+
+          <div class="campo">
+            <label for="fObs">Observações da inspeção</label>
+            <textarea id="fObs" rows="2" placeholder="Estado da embalagem, etiquetas em falta, etc."></textarea>
+          </div>
+
+          <button type="submit" class="btn pri" style="min-height:50px">Dar entrada em stock</button>
+        </form>
+      </section>
+
+      <section>
+        <h2 class="sec-tit">Entradas registadas</h2>
+        <div id="listaRec"></div>
+        <div class="ferramentas">
+          <button class="btn pequeno" id="btnImportCat">Importar catálogo</button>
+          <button class="btn pequeno" id="btnExportCsv">Exportar stock (CSV)</button>
+          <button class="btn pequeno" id="btnBackup">Cópia de segurança</button>
+          <button class="btn pequeno" id="btnRestaurar">Restaurar</button>
+          <span class="esp" id="infoTamanho"></span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="painel" id="p-fechadas" role="tabpanel" aria-labelledby="t-fechadas" hidden>
+    <div class="barra-pesq">
+      <div class="pesq">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+        <input type="text" id="qFechadas" placeholder="Pesquisar tinta, código interno, código do fornecedor ou lote">
+      </div>
+    </div>
+    <div id="listaFechadas"></div>
+  </div>
+
+  <div class="painel" id="p-abertas" role="tabpanel" aria-labelledby="t-abertas" hidden>
+    <div class="barra-pesq">
+      <div class="pesq">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+        <input type="text" id="qAbertas" placeholder="Pesquisar a tinta da lata que acabou">
+      </div>
+    </div>
+    <div id="listaAbertas"></div>
+  </div>
+
+  <div class="painel" id="p-fora" role="tabpanel" aria-labelledby="t-fora" hidden>
+    <div id="listaFora"></div>
+  </div>
+
+  <div class="painel" id="p-historico" role="tabpanel" aria-labelledby="t-historico" hidden>
+    <div class="barra-pesq">
+      <div class="pesq">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+        <input type="text" id="qHistorico" placeholder="Pesquisar tinta, lote ou operador">
+      </div>
+      <button class="btn pequeno" id="btnExportHist">Exportar histórico (CSV)</button>
+    </div>
+    <div class="filtros" id="filtrosHist" role="group" aria-label="Filtrar por tipo de movimento">
+      <button class="fchip" data-filtro="todos" aria-pressed="true">Todos</button>
+      <button class="fchip" data-filtro="entrada" aria-pressed="false">Entradas</button>
+      <button class="fchip" data-filtro="abertura" aria-pressed="false">Aberturas</button>
+      <button class="fchip" data-filtro="consumo" aria-pressed="false">Fechos</button>
+      <button class="fchip" data-filtro="sucata" aria-pressed="false">Sucatagens</button>
+      <button class="fchip" data-filtro="anulacao" aria-pressed="false">Anulações</button>
+    </div>
+    <div id="listaHistorico"></div>
+  </div>
+</main>
+
+<dialog id="dlg"><form method="dialog" id="dlgForm">
+  <div class="dlg-in"><h2 id="dlgTit"></h2><div class="corpo" id="dlgCorpo"></div></div>
+  <div class="dlg-acoes" id="dlgAcoes"></div>
+</form></dialog>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script src="config.js"></script>
+<script data-app="1">
+(function(){
+"use strict";
+
+/* ============ estado ============ */
+var CHAVE_LOCAL = "controlo-tintas-estado-v1";
+var VAZIO = {versao:1, carimbo:0, catalogo:[], lotes:[], latas:[], registo:[]};
+var E = VAZIO;
+var modo = "ok";            // ok | local | erro | ocupado
+var somenteLeitura = false;
+
+function normalizar(o){
+  o = o || {};
+  return {
+    versao: 1,
+    carimbo: +o.carimbo || 0,
+    catalogo: Array.isArray(o.catalogo) ? o.catalogo : [],
+    lotes: Array.isArray(o.lotes) ? o.lotes : [],
+    latas: Array.isArray(o.latas) ? o.latas : [],
+    registo: Array.isArray(o.registo) ? o.registo : [],
+    config: (o.config && typeof o.config === "object") ? o.config : {codigoAdmin: sinal("admin")}
+  };
+}
+/* Sinal do código de administrador. NÃO é segurança: quem abrir o código-fonte
+   da página consegue lê-lo. Serve para impedir enganos, não para impedir acessos. */
+function sinal(s){
+  var h = 5381;
+  s = String(s == null ? "" : s);
+  for(var i=0;i<s.length;i++){ h = ((h*33) ^ s.charCodeAt(i)) >>> 0; }
+  return "s" + h.toString(36);
+}
+function codigoAdminValido(v){
+  var esperado = (E.config && E.config.codigoAdmin) || sinal("admin");
+  return sinal(String(v || "").trim()) === esperado;
+}
+function lerLocal(){
+  try{
+    var s = localStorage.getItem(CHAVE_LOCAL);
+    return s ? normalizar(JSON.parse(s)) : null;
+  }catch(e){ return null; }
+}
+function gravarLocal(){
+  try{ localStorage.setItem(CHAVE_LOCAL, JSON.stringify(E)); }catch(e){}
+}
+/* ============ utilitários ============ */
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function id(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+function hoje(){
+  var d = new Date(), m = d.getMonth()+1, x = d.getDate();
+  return d.getFullYear() + "-" + (m<10?"0":"") + m + "-" + (x<10?"0":"") + x;
+}
+function agoraISO(){ return new Date().toISOString(); }
+function soData(s){ return s ? String(s).slice(0,10) : ""; }
+function pt(s){
+  s = soData(s); if(!s) return "—";
+  var p = s.split("-"); return p[2]+"/"+p[1]+"/"+p[0];
+}
+function maisMeses(s, n){
+  var p = soData(s).split("-");
+  if(p.length !== 3) return "";
+  var d = new Date(+p[0], +p[1]-1, +p[2]);
+  var dia = d.getDate();
+  d.setMonth(d.getMonth()+n);
+  if(d.getDate() < dia) d.setDate(0);          // 31 → último dia do mês
+  var m = d.getMonth()+1, x = d.getDate();
+  return d.getFullYear()+"-"+(m<10?"0":"")+m+"-"+(x<10?"0":"")+x;
+}
+function dias(a, b){
+  var pa = soData(a).split("-"), pb = soData(b).split("-");
+  if(pa.length!==3 || pb.length!==3) return 0;
+  var da = Date.UTC(+pa[0], +pa[1]-1, +pa[2]), db = Date.UTC(+pb[0], +pb[1]-1, +pb[2]);
+  return Math.round((db-da)/86400000);
+}
+function norm(s){
+  return String(s==null?"":s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
+function combina(txt, q){
+  if(!q) return true;
+  var t = norm(txt), ts = norm(q).split(/\s+/).filter(Boolean);
+  for(var i=0;i<ts.length;i++){ if(t.indexOf(ts[i]) < 0) return false; }
+  return true;
+}
+function toast(msg){
+  var t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(function(){ t.hidden = true; }, 3200);
+}
+
+/* ============ regras de validade ============ */
+var MESES_APOS_ABERTURA = 6;
+
+function loteDe(loteId){
+  for(var i=0;i<E.lotes.length;i++){ if(E.lotes[i].id === loteId) return E.lotes[i]; }
+  return null;
+}
+// limite de utilização de uma lata aberta = o mais cedo entre validade e abertura+6 meses
+function limiteAberta(lata, lote){
+  var a = maisMeses(lata.dataAbertura, MESES_APOS_ABERTURA);
+  var v = soData(lote ? lote.validade : "");
+  if(!v) return a;
+  if(!a) return v;
+  return a < v ? a : v;
+}
+function motivoFora(lata, lote){
+  var h = hoje();
+  var v = soData(lote ? lote.validade : "");
+  var a = maisMeses(lata.dataAbertura, MESES_APOS_ABERTURA);
+  if(v && v < h && a && a < h) return "Validade e prazo de 6 meses ultrapassados";
+  if(v && v < h) return "Validade do fabricante ultrapassada";
+  if(a && a < h) return "Mais de 6 meses após abertura";
+  return "";
+}
+function severidade(limite){
+  var d = dias(hoje(), limite);
+  if(!limite) return {cls:"warn", sel:"warn", txt:"Sem data"};
+  if(d < 0) return {cls:"bad", sel:"bad", txt:"Fora de validade há " + (-d) + " d"};
+  if(d === 0) return {cls:"bad", sel:"bad", txt:"Termina hoje"};
+  if(d <= 30) return {cls:"warn", sel:"warn", txt:"Faltam " + d + " d"};
+  return {cls:"ok", sel:"ok", txt:"Faltam " + d + " d"};
+}
+function latasDoLote(loteId, estado){
+  var r = [];
+  for(var i=0;i<E.latas.length;i++){
+    var l = E.latas[i];
+    if(l.loteId === loteId && (!estado || l.estado === estado)) r.push(l);
+  }
+  return r;
+}
+function abertasFora(){
+  var r = [];
+  for(var i=0;i<E.latas.length;i++){
+    var l = E.latas[i]; if(l.estado !== "aberta") continue;
+    var lt = loteDe(l.loteId);
+    if(motivoFora(l, lt)) r.push({lata:l, lote:lt});
+  }
+  return r;
+}
+function abertasDentro(){
+  var r = [];
+  for(var i=0;i<E.latas.length;i++){
+    var l = E.latas[i]; if(l.estado !== "aberta") continue;
+    var lt = loteDe(l.loteId);
+    if(!motivoFora(l, lt)) r.push({lata:l, lote:lt});
+  }
+  return r;
+}
+function fechadasFora(){
+  var h = hoje(), r = [];
+  for(var i=0;i<E.lotes.length;i++){
+    var lt = E.lotes[i];
+    var n = latasDoLote(lt.id, "fechada").length;
+    if(n > 0 && soData(lt.validade) && soData(lt.validade) < h) r.push({lote:lt, qtd:n});
+  }
+  return r;
+}
+
+/* ============ catálogo ============ */
+function doCatalogo(codForn){
+  var k = norm(codForn).trim();
+  for(var i=0;i<E.catalogo.length;i++){
+    if(norm(E.catalogo[i].codFornecedor).trim() === k) return E.catalogo[i];
+  }
+  return null;
+}
+
+/* ============ persistência — GitHub como base de dados partilhada ============ */
+/* FASE DE TESTE: sem servidor próprio, os dados ficam num ficheiro do
+   repositório GitHub (dados/estado.json), lidos e escritos diretamente pelo
+   browser através da API do GitHub. O token de acesso, restrito só a este
+   repositório, fica visível no código da página — não há como o esconder
+   sem um servidor (ver README.md). Esta é a única camada que muda quando a
+   plataforma passar para um servidor interno. */
+var GH = window.CONFIG_GITHUB || {};
+var GH_TEM_TOKEN = !!(GH.token && GH.token.indexOf("COLOQUE_AQUI") < 0);
+var GH_URL = "https://api.github.com/repos/" + GH.owner + "/" + GH.repo + "/contents/" + GH.path;
+var shaAtual = null;
+
+function marcar(m, txt){
+  modo = m;
+  var n = $("estadoGuardar"); n.setAttribute("data-m", m);
+  $("estadoTxt").textContent = txt;
+}
+function ghCabecalhos(extra){
+  var h = {"Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"};
+  if(GH_TEM_TOKEN) h["Authorization"] = "Bearer " + GH.token;
+  if(extra) for(var k in extra) h[k] = extra[k];
+  return h;
+}
+function paraBase64(texto){ return btoa(unescape(encodeURIComponent(texto))); }
+function deBase64(b64){ return decodeURIComponent(escape(atob(b64.replace(/\n/g, "")))); }
+
+// Lê o estado.json diretamente do GitHub (funciona mesmo sem token, por o
+// repositório ser público). Devolve {dados, sha}, ou null se ainda não existir.
+function ghLer(){
+  var url = GH_URL + "?ref=" + encodeURIComponent(GH.branch || "main") + "&_=" + Date.now();
+  return fetch(url, {headers: ghCabecalhos(), cache:"no-store"}).then(function(r){
+    if(r.status === 404) return null;
+    if(!r.ok) return r.json().catch(function(){return{};}).then(function(j){
+      throw {codigo:"leitura", estado:r.status, msg:(j&&j.message)||""};
+    });
+    return r.json();
+  }).then(function(j){
+    if(!j) return null;
+    return {dados: normalizar(JSON.parse(deBase64(j.content))), sha: j.sha};
+  });
+}
+// Escreve o novo estado. Se `shaBase` já não corresponder ao ficheiro no
+// GitHub — alguém gravou entretanto — a API responde 409: é o sinal para ler
+// de novo e tentar outra vez (ver operar()).
+function ghEscrever(dados, shaBase){
+  var corpo = {message:"stock: " + new Date().toISOString(), content: paraBase64(JSON.stringify(dados)), branch: GH.branch || "main"};
+  if(shaBase) corpo.sha = shaBase;
+  return fetch(GH_URL, {method:"PUT", headers: ghCabecalhos({"Content-Type":"application/json"}), body: JSON.stringify(corpo)})
+    .then(function(r){
+      if(r.status === 409) throw {codigo:"conflito"};
+      if(r.status === 401 || r.status === 403) return r.json().catch(function(){return{};}).then(function(j){ throw {codigo:"acesso", msg:(j&&j.message)||""}; });
+      if(!r.ok) return r.json().catch(function(){return{};}).then(function(j){ throw {codigo:"erro", estado:r.status, msg:(j&&j.message)||""}; });
+      return r.json();
+    }).then(function(j){ return j.content.sha; });
+}
+function registar(tipo, texto){
+  E.registo.unshift({ts:agoraISO(), tipo:tipo, texto:texto, operador:operador()});
+  if(E.registo.length > 800) E.registo.length = 800;
+}
+function operador(){ return ($("operador").value || "").trim(); }
+function exigirOperador(){
+  if(operador()) return true;
+  $("operador").focus();
+  toast("Escreva o seu nome no campo Operador antes de registar.");
+  return false;
+}
+
+/* `operar(mutar)` é o único caminho para alterar o stock:
+   1. lê o estado mais recente do GitHub — nunca confia no que está em
+      memória, porque outro posto pode ter gravado entretanto;
+   2. corre `mutar()`, que altera o `E` já atualizado e devolve a mensagem
+      do toast (ou `false` para cancelar sem gravar);
+   3. grava com o `sha` lido no passo 1 — se alguém gravou pelo meio, o
+      GitHub recusa (409) e repetimos os três passos, até 4 vezes. */
+var A_OPERAR = false;
+function operar(mutar){
+  if(A_OPERAR){ toast("Aguarde a gravação anterior terminar."); return; }
+  if(!GH_TEM_TOKEN){ toast("Sem token configurado — não é possível gravar. Veja config.js."); return; }
+  A_OPERAR = true;
+  marcar("ocupado", "A sincronizar…");
+  var tentativas = 0;
+  (function passo(){
+    tentativas++;
+    ghLer().then(function(atual){
+      if(atual){ E = atual.dados; shaAtual = atual.sha; }
+      var msg = mutar();
+      if(msg === false){ A_OPERAR = false; desenhar(); marcar("ok", "Pronto"); return; }
+      E.carimbo = Date.now();
+      gravarLocal();
+      marcar("ocupado", "A guardar…");
+      return ghEscrever(E, shaAtual).then(function(novoSha){
+        shaAtual = novoSha; A_OPERAR = false; somenteLeitura = false;
+        marcar("ok", "Guardado"); mostrarModo(); desenhar();
+        if(msg) toast(msg);
+      });
+    }).catch(function(err){
+      if(err && err.codigo === "conflito" && tentativas < 4){ passo(); return; }
+      A_OPERAR = false;
+      gravarLocal(); desenhar();
+      if(err && err.codigo === "acesso"){
+        somenteLeitura = true; marcar("erro", "Só de leitura"); mostrarModo();
+        toast("O token não tem permissão para gravar neste repositório.");
+      }else if(err && err.codigo === "conflito"){
+        marcar("local", "Não foi possível gravar");
+        toast("Muitas alterações em simultâneo. Tente outra vez.");
+      }else{
+        marcar("local", "Guardado só neste dispositivo");
+        toast("Sem ligação ao GitHub. Ficou guardado neste dispositivo — tente de novo com internet.");
+      }
+    });
+  })();
+}
+/* ============ diálogo ============ */
+function perguntar(op){
+  var d = $("dlg");
+  $("dlgTit").textContent = op.titulo;
+  $("dlgCorpo").innerHTML = op.corpo;
+  var acoes = $("dlgAcoes"); acoes.innerHTML = "";
+  var bC = document.createElement("button");
+  bC.type = "button"; bC.className = "btn"; bC.textContent = op.cancelar || "Cancelar";
+  bC.onclick = function(){ d.close(); if(op.aoCancelar) op.aoCancelar(); };
+  var bO = document.createElement("button");
+  bO.type = "button"; bO.className = "btn " + (op.perigo ? "perigo" : "pri"); bO.textContent = op.confirmar || "Confirmar";
+  bO.onclick = function(){ d.close(); op.aoConfirmar(); };
+  acoes.appendChild(bC); acoes.appendChild(bO);
+  d.showModal(); bO.focus();
+}
+
+/* ============ separadores ============ */
+var abaAtiva = "rececao";
+function irPara(nome){
+  abaAtiva = nome;
+  try{ sessionStorage.setItem("aba-ativa", nome); }catch(e){}
+  var bs = document.querySelectorAll(".aba");
+  for(var i=0;i<bs.length;i++){
+    var sel = bs[i].getAttribute("data-aba") === nome;
+    bs[i].setAttribute("aria-selected", sel ? "true" : "false");
+    $("p-" + bs[i].getAttribute("data-aba")).hidden = !sel;
+  }
+}
+(function(){
+  var bs = document.querySelectorAll(".aba");
+  for(var i=0;i<bs.length;i++){
+    bs[i].addEventListener("click", function(){ irPara(this.getAttribute("data-aba")); });
+  }
+})();
+
+/* ============ receção ============ */
+var fotoAtual = null;
+
+$("btnFoto").addEventListener("click", function(){ $("fotoInput").click(); });
+$("fotoInput").addEventListener("change", function(){
+  var f = this.files && this.files[0];
+  if(!f) return;
+  comprimir(f, function(dataUrl){
+    fotoAtual = dataUrl;
+    $("fotoPre").innerHTML = '<img src="' + dataUrl + '" alt="Fotografia da etiqueta da lata registada">';
+    $("btnFoto").textContent = "Repetir fotografia";
+    $("fotoAjuda").textContent = "Confirme os dados da etiqueta nos campos abaixo.";
+  });
+  this.value = "";
+});
+function comprimir(ficheiro, feito){
+  var fr = new FileReader();
+  fr.onload = function(){
+    var im = new Image();
+    im.onload = function(){
+      var max = 900;
+      var w = im.width, h = im.height;
+      if(w > max || h > max){ var r = Math.min(max/w, max/h); w = Math.round(w*r); h = Math.round(h*r); }
+      var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(im, 0, 0, w, h);
+      try{ feito(cv.toDataURL("image/jpeg", 0.55)); }
+      catch(e){ feito(fr.result); }
+    };
+    im.onerror = function(){ feito(fr.result); };
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(ficheiro);
+}
+
+function resolverCodigo(){
+  var v = $("fCodForn").value.trim();
+  var box = $("resolvido"), man = $("camposManuais");
+  if(!v){
+    box.className = "resolvido";
+    box.textContent = "Introduza o código do fornecedor para o associar ao artigo interno.";
+    man.hidden = true; return;
+  }
+  var c = doCatalogo(v);
+  if(c){
+    box.className = "resolvido ok";
+    box.innerHTML = '<b>' + esc(c.descricao || "(sem descrição)") + '</b>' +
+      '<span class="mono">' + esc(c.codInterno || "—") + (c.fornecedor ? ' · ' + esc(c.fornecedor) : '') + '</span>';
+    man.hidden = true;
+    $("fCodInt").value = c.codInterno || "";
+    $("fDescr").value = c.descricao || "";
+    $("fFornecedor").value = c.fornecedor || "";
+  }else{
+    box.className = "resolvido novo";
+    box.innerHTML = '<b>Código não consta do catálogo</b><span>Preencha o código interno e a descrição. A associação fica guardada para as próximas entradas.</span>';
+    man.hidden = false;
+  }
+}
+$("fCodForn").addEventListener("input", resolverCodigo);
+$("fCodForn").addEventListener("change", resolverCodigo);
+
+$("formRec").addEventListener("submit", function(ev){
+  ev.preventDefault();
+  if(!exigirOperador()) return;
+  var codForn = $("fCodForn").value.trim();
+  var codIntManual = $("fCodInt").value.trim();
+  var descrManual = $("fDescr").value.trim();
+  var fornManual = $("fFornecedor").value.trim();
+  var validade = $("fVal").value;
+  var qtd = Math.max(1, Math.min(500, parseInt($("fQtd").value, 10) || 1));
+  var lote = $("fLote").value.trim();
+  var volume = $("fVol").value.trim();
+  var obs = $("fObs").value.trim();
+  var foto = fotoAtual || "";
+
+  // validação com o catálogo tal como está agora; a gravação volta a
+  // resolver o código já com dados frescos do GitHub, dentro de operar().
+  var catAntes = doCatalogo(codForn);
+  var codIntAntes = catAntes ? catAntes.codInterno : codIntManual;
+  var descrAntes  = catAntes ? catAntes.descricao  : descrManual;
+  if(!codIntAntes || !descrAntes){
+    toast("Indique o código interno e a descrição desta tinta.");
+    (codIntManual ? $("fDescr") : $("fCodInt")).focus();
+    return;
+  }
+
+  function gravar(){
+    operar(function(){
+      var cat = doCatalogo(codForn);
+      var ci = cat ? cat.codInterno : codIntManual;
+      var de = cat ? cat.descricao  : descrManual;
+      var fo = cat ? cat.fornecedor : fornManual;
+      if(!cat) E.catalogo.push({codFornecedor:codForn, codInterno:ci, descricao:de, fornecedor:fo});
+      var lt = {
+        id: id(), codFornecedor: codForn, codInterno: ci, descricao: de, fornecedor: fo,
+        lote: lote, validade: validade, qtd: qtd, volume: volume,
+        dataRececao: hoje(), tsRececao: agoraISO(), operador: operador(),
+        obs: obs, foto: foto
+      };
+      E.lotes.unshift(lt);
+      for(var i=0;i<qtd;i++) E.latas.push({id:id(), loteId:lt.id, estado:"fechada"});
+      registar("rececao", qtd + "× " + ci + " · lote " + lote + " · val. " + pt(validade));
+      return qtd + (qtd === 1 ? " lata registada" : " latas registadas") + " em stock.";
+    });
+    limparForm();
+  }
+
+  if(validade && validade < hoje()){
+    perguntar({
+      titulo: "Validade já ultrapassada",
+      corpo: '<p>A validade indicada (<b>' + esc(pt(validade)) + '</b>) já passou. Esta tinta não pode ser aplicada.</p>' +
+             '<div class="caixa-info">Registe-a apenas se precisar de a manter identificada para sucatagem. Entra em stock já marcada como fora de validade.</div>',
+      confirmar: "Registar mesmo assim", perigo: true, aoConfirmar: gravar
+    });
+    return;
+  }
+  gravar();
+});
+function limparForm(){
+  $("formRec").reset();
+  $("fQtd").value = 1;
+  fotoAtual = null;
+  $("fotoPre").innerHTML = "";
+  $("btnFoto").innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-9Z"/><circle cx="12" cy="12.5" r="3.2"/></svg> Fotografar a lata';
+  $("fotoAjuda").textContent = "Fotografe a zona da etiqueta com o código, lote e validade. A foto fica anexada ao registo como prova; os campos abaixo são preenchidos por si.";
+  resolverCodigo();
+}
+
+/* ============ abrir lata ============ */
+function abrirLata(loteId){
+  if(!exigirOperador()) return;
+  var lt = loteDe(loteId); if(!lt) return;                  // só para os textos do diálogo
+  var jaAbertas = [];
+  for(var i=0;i<E.latas.length;i++){
+    var l = E.latas[i]; if(l.estado !== "aberta") continue;
+    var o = loteDe(l.loteId);
+    if(o && o.codInterno === lt.codInterno) jaAbertas.push({lata:l, lote:o});
+  }
+
+  function executar(){
+    operar(function(){
+      var ltf = loteDe(loteId); if(!ltf) return false;
+      var disp = latasDoLote(loteId, "fechada");
+      if(!disp.length){ toast("Já não há latas fechadas deste lote."); return false; }
+      disp[0].estado = "aberta";
+      disp[0].dataAbertura = hoje();
+      disp[0].tsAbertura = agoraISO();
+      disp[0].opAbertura = operador();
+      registar("abertura", ltf.codInterno + " · lote " + ltf.lote);
+      irPara("abertas");
+      return "Lata aberta. Prazo de utilização até " + pt(limiteAberta(disp[0], ltf)) + ".";
+    });
+  }
+
+  if(jaAbertas.length){
+    var linhas = "";
+    for(var k=0;k<jaAbertas.length;k++){
+      var a = jaAbertas[k], lim = limiteAberta(a.lata, a.lote), s = severidade(lim);
+      linhas += '<div class="caixa-info" style="margin-top:6px">Lote <b class="mono">' + esc(a.lote.lote) + '</b> · aberta a ' +
+        esc(pt(a.lata.dataAbertura)) + ' por ' + esc(a.lata.opAbertura || "—") +
+        '<br>Utilizar até <b class="mono">' + esc(pt(lim)) + '</b> — <span class="selo ' + s.sel + '">' + esc(s.txt) + '</span></div>';
+    }
+    perguntar({
+      titulo: "Já existe uma lata aberta desta tinta",
+      corpo: '<p>Há ' + (jaAbertas.length === 1 ? '<b>1 lata aberta</b>' : '<b>' + jaAbertas.length + ' latas abertas</b>') +
+             ' de <b>' + esc(lt.descricao) + '</b>. Termine primeiro a lata já aberta.</p>' + linhas,
+      cancelar: "Usar a lata aberta", confirmar: "Abrir nova lata mesmo assim", perigo: true,
+      aoConfirmar: executar
+    });
+    return;
+  }
+  executar();
+}
+
+/* ============ terminar / sucatear ============ */
+function terminarLata(lataId){
+  if(!exigirOperador()) return;
+  var la = lataPorId(lataId); if(!la) return;                // só para os textos do diálogo
+  var lt = loteDe(la.loteId);
+  perguntar({
+    titulo: "Dar baixa da lata",
+    corpo: '<p>Confirma que a lata de <b>' + esc(lt ? lt.descricao : "") + '</b> (lote <b class="mono">' +
+           esc(lt ? lt.lote : "") + '</b>) foi totalmente consumida?</p>' +
+           '<div class="caixa-info">Sai do stock de latas abertas e fica no histórico como consumida.</div>',
+    confirmar: "Sim, lata acabada",
+    aoConfirmar: function(){
+      operar(function(){
+        var laf = lataPorId(lataId); if(!laf || laf.estado !== "aberta"){ toast("Esta lata já não está aberta."); return false; }
+        var ltf = loteDe(laf.loteId);
+        laf.estado = "terminada"; laf.dataFim = hoje(); laf.tsFim = agoraISO();
+        laf.opFim = operador(); laf.motivo = "Consumida";
+        registar("consumo", (ltf ? ltf.codInterno + " · lote " + ltf.lote : lataId));
+        return "Lata dada como acabada.";
+      });
+    }
+  });
+}
+function sucatearLata(lataId){
+  if(!exigirOperador()) return;
+  var la = lataPorId(lataId); if(!la) return;
+  var lt = loteDe(la.loteId);
+  var mot = la.estado === "aberta" ? motivoFora(la, lt) : "Validade do fabricante ultrapassada";
+  perguntar({
+    titulo: "Sucatear lata",
+    corpo: '<p>Enviar para sucata a lata de <b>' + esc(lt ? lt.descricao : "") + '</b> (lote <b class="mono">' +
+           esc(lt ? lt.lote : "") + '</b>)?</p>' +
+           '<div class="caixa-info">Motivo: ' + esc(mot) + '</div>',
+    confirmar: "Sucatear", perigo: true,
+    aoConfirmar: function(){
+      operar(function(){
+        var laf = lataPorId(lataId); if(!laf) return false;
+        var ltf = loteDe(laf.loteId);
+        var motf = laf.estado === "aberta" ? motivoFora(laf, ltf) : "Validade do fabricante ultrapassada";
+        laf.estado = "sucatada"; laf.dataFim = hoje(); laf.tsFim = agoraISO();
+        laf.opFim = operador(); laf.motivo = motf;
+        registar("sucata", (ltf ? ltf.codInterno + " · lote " + ltf.lote : lataId) + " — " + motf);
+        return "Lata sucatada.";
+      });
+    }
+  });
+}
+function sucatearLote(loteId){
+  if(!exigirOperador()) return;
+  var lt = loteDe(loteId); if(!lt) return;
+  var fechadas = latasDoLote(loteId, "fechada");
+  if(!fechadas.length) return;
+  perguntar({
+    titulo: "Sucatear lote fechado",
+    corpo: '<p>Sucatear as <b>' + fechadas.length + '</b> latas fechadas de <b>' + esc(lt.descricao) +
+           '</b>, lote <b class="mono">' + esc(lt.lote) + '</b>?</p>' +
+           '<div class="caixa-info">Motivo: validade do fabricante ultrapassada em ' + esc(pt(lt.validade)) + '.</div>',
+    confirmar: "Sucatear " + fechadas.length + (fechadas.length === 1 ? " lata" : " latas"), perigo: true,
+    aoConfirmar: function(){
+      operar(function(){
+        var ltf = loteDe(loteId); if(!ltf) return false;
+        var fechadasf = latasDoLote(loteId, "fechada");
+        if(!fechadasf.length) return false;
+        for(var i=0;i<fechadasf.length;i++){
+          fechadasf[i].estado = "sucatada"; fechadasf[i].dataFim = hoje(); fechadasf[i].tsFim = agoraISO();
+          fechadasf[i].opFim = operador(); fechadasf[i].motivo = "Validade do fabricante ultrapassada (lata fechada)";
+        }
+        ltf.foto = "";
+        registar("sucata", fechadasf.length + "× " + ltf.codInterno + " · lote " + ltf.lote + " — fechadas fora de validade");
+        return "Lote sucatado.";
+      });
+    }
+  });
+}
+// A receção pode anular uma entrada enquanto nenhuma lata dela tiver sido mexida.
+// Depois disso só o administrador, pelo histórico.
+function podeAnular(lote){
+  var todas = latasDoLote(lote.id);
+  if(!todas.length) return false;
+  for(var i=0;i<todas.length;i++){ if(todas[i].estado !== "fechada") return false; }
+  return true;
+}
+// Guarda o lote e as latas antes de os apagar, para o administrador poder repor a entrada.
+function arquivarEntrada(lt){
+  return {lote: JSON.parse(JSON.stringify(lt)), latas: JSON.parse(JSON.stringify(latasDoLote(lt.id)))};
+}
+function registarAnulacao(lt, total, motivo){
+  E.registo.unshift({ts:agoraISO(), tipo:"anulacao", operador:operador(), data:hoje(),
+    texto: total + "× " + lt.codInterno + " · lote " + lt.lote,
+    codInterno: lt.codInterno, descricao: lt.descricao, lote: lt.lote,
+    qtd: total, motivo: motivo, arquivo: arquivarEntrada(lt)});
+  if(E.registo.length > 800) E.registo.length = 800;
+}
+function removerEntrada(loteId){
+  E.latas = E.latas.filter(function(l){ return l.loteId !== loteId; });
+  E.lotes = E.lotes.filter(function(l){ return l.id !== loteId; });
+}
+function anularEntrada(loteId){
+  if(!exigirOperador()) return;
+  var lt = loteDe(loteId); if(!lt) return;
+  if(!podeAnular(lt)){
+    toast("Já há latas mexidas nesta entrada. Só o administrador a pode anular, pelo histórico.");
+    return;
+  }
+  var total = latasDoLote(loteId).length;
+  perguntar({
+    titulo: "Anular entrada",
+    corpo: '<p>Anular a entrada de <b>' + total + '</b> latas de <b>' + esc(lt.descricao) +
+           '</b>, lote <b class="mono">' + esc(lt.lote) + '</b>?</p>' +
+           '<div class="caixa-info">Todas as latas desta entrada continuam fechadas, por isso não se perde nenhum trabalho já feito. Fica assinalada no histórico e o administrador pode repô-la a partir de lá.</div>',
+    confirmar: "Anular entrada", perigo: true,
+    aoConfirmar: function(){
+      operar(function(){
+        var ltf = loteDe(loteId); if(!ltf || !podeAnular(ltf)){
+          toast("Já há latas mexidas nesta entrada. Já não pode ser anulada por aqui.");
+          return false;
+        }
+        var totalf = latasDoLote(loteId).length;
+        registarAnulacao(ltf, totalf, "todas as latas ainda fechadas");
+        removerEntrada(loteId);
+        return "Entrada anulada.";
+      });
+    }
+  });
+}
+
+/* ---- anulação de movimentos pelo administrador (histórico) ---- */
+function pedirAdmin(op){
+  perguntar({
+    titulo: op.titulo,
+    corpo: op.corpo +
+      '<div class="campo"><label for="inpAdmin">Código de administrador</label>' +
+      '<input type="password" id="inpAdmin" autocomplete="off" placeholder="Código"></div>',
+    confirmar: op.confirmar, perigo: true,
+    aoConfirmar: function(){
+      var c = document.getElementById("inpAdmin");
+      var codigo = c ? c.value : "";
+      operar(function(){
+        if(!codigoAdminValido(codigo)){
+          toast("Código de administrador incorreto. Nada foi alterado.");
+          return false;
+        }
+        return op.mutar();
+      });
+    }
+  });
+}
+function lataPorId(lataId){
+  for(var i=0;i<E.latas.length;i++){ if(E.latas[i].id === lataId) return E.latas[i]; }
+  return null;
+}
+function registarReversao(mv, detalhe){
+  E.registo.unshift({ts:agoraISO(), tipo:"reversao", operador:operador(), data:hoje(),
+    codInterno:mv.codInterno, descricao:mv.descricao, lote:mv.lote, qtd:mv.qtd, detalhe:detalhe});
+  if(E.registo.length > 800) E.registo.length = 800;
+}
+function anularMovimento(mv){
+  if(!mv) return;
+  if(!exigirOperador()) return;
+  if(mv.tipo === "entrada")  return anularMovEntrada(mv);
+  if(mv.tipo === "abertura") return anularMovAbertura(mv);
+  if(mv.tipo === "consumo")  return anularMovFim(mv, "terminada", "fecho");
+  if(mv.tipo === "sucata")   return anularMovFim(mv, "sucatada", "sucatagem");
+  if(mv.tipo === "anulacao") return reporEntrada(mv);
+}
+function anularMovEntrada(mv){
+  var lt = loteDe(mv.loteId); if(!lt) return;
+  var todas = latasDoLote(lt.id);
+  var mexidas = todas.filter(function(l){ return l.estado !== "fechada"; });
+  var aviso = "";
+  if(mexidas.length){
+    var c = {}, partes = [];
+    mexidas.forEach(function(l){ c[l.estado] = (c[l.estado]||0) + 1; });
+    if(c.aberta) partes.push(c.aberta + (c.aberta === 1 ? " já aberta" : " já abertas"));
+    if(c.terminada) partes.push(c.terminada + (c.terminada === 1 ? " já consumida" : " já consumidas"));
+    if(c.sucatada) partes.push(c.sucatada + (c.sucatada === 1 ? " já sucatada" : " já sucatadas"));
+    aviso = '<div class="caixa-info alerta-caixa"><b>Atenção:</b> desta entrada há ' + partes.join(", ") +
+            '. Anular apaga também essas latas e os movimentos que tiveram.</div>';
+  }
+  pedirAdmin({
+    titulo: "Anular entrada",
+    corpo: '<p>Anular a entrada de <b>' + todas.length + '</b> latas de <b>' + esc(lt.descricao) +
+           '</b>, lote <b class="mono">' + esc(lt.lote) + '</b>, de ' + esc(pt(lt.dataRececao)) +
+           ' por ' + esc(lt.operador || "—") + '?</p>' + aviso +
+           '<div class="caixa-info">Fica no histórico como entrada anulada e pode voltar a ser reposta a partir de lá.</div>',
+    confirmar: "Anular entrada",
+    mutar: function(){
+      var ltf = loteDe(mv.loteId); if(!ltf) return false;
+      var todasf = latasDoLote(ltf.id);
+      var mexidasf = todasf.filter(function(l){ return l.estado !== "fechada"; });
+      registarAnulacao(ltf, todasf.length, mexidasf.length
+        ? ("incluía " + mexidasf.length + (mexidasf.length === 1 ? " lata já movimentada" : " latas já movimentadas"))
+        : "todas as latas ainda fechadas");
+      removerEntrada(ltf.id);
+      return "Entrada anulada.";
+    }
+  });
+}
+function anularMovAbertura(mv){
+  var la = lataPorId(mv.lataId); if(!la) return;
+  if(la.estado !== "aberta"){
+    toast(la.estado === "terminada" ? "Anule primeiro o fecho desta lata." : "Anule primeiro a sucatagem desta lata.");
+    return;
+  }
+  pedirAdmin({
+    titulo: "Anular abertura",
+    corpo: '<p>Anular a abertura da lata de <b>' + esc(mv.descricao) + '</b>, lote <b class="mono">' +
+           esc(mv.lote) + '</b>, aberta a ' + esc(pt(la.dataAbertura)) + ' por ' + esc(la.opAbertura || "—") + '?</p>' +
+           '<div class="caixa-info">A lata volta ao stock como fechada e o prazo de 6 meses deixa de contar.</div>',
+    confirmar: "Anular abertura",
+    mutar: function(){
+      var laf = lataPorId(mv.lataId); if(!laf || laf.estado !== "aberta"){ toast("Este movimento já não pode ser anulado."); return false; }
+      var det = "Anulada a abertura de " + pt(laf.dataAbertura) + " por " + (laf.opAbertura || "—");
+      laf.estado = "fechada";
+      delete laf.dataAbertura; delete laf.opAbertura; delete laf.tsAbertura;
+      registarReversao(mv, det);
+      return "Abertura anulada. A lata voltou a fechada.";
+    }
+  });
+}
+function anularMovFim(mv, estadoEsperado, nome){
+  var la = lataPorId(mv.lataId); if(!la) return;
+  if(la.estado !== estadoEsperado){ toast("Este movimento já não está ativo."); return; }
+  var volta = la.dataAbertura ? "aberta" : "fechada";
+  pedirAdmin({
+    titulo: nome === "fecho" ? "Anular fecho" : "Anular sucatagem",
+    corpo: '<p>Anular ' + (nome === "fecho" ? "o fecho" : "a sucatagem") + ' da lata de <b>' +
+           esc(mv.descricao) + '</b>, lote <b class="mono">' + esc(mv.lote) + '</b>, de ' +
+           esc(pt(la.dataFim)) + ' por ' + esc(la.opFim || "—") + '?</p>' +
+           '<div class="caixa-info">A lata volta ao stock como <b>' + volta + '</b>.</div>',
+    confirmar: "Anular movimento",
+    mutar: function(){
+      var laf = lataPorId(mv.lataId); if(!laf || laf.estado !== estadoEsperado){ toast("Este movimento já não está ativo."); return false; }
+      var voltaf = laf.dataAbertura ? "aberta" : "fechada";
+      var det = "Anulado o " + nome + " de " + pt(laf.dataFim) + " por " + (laf.opFim || "—");
+      laf.estado = voltaf;
+      delete laf.dataFim; delete laf.opFim; delete laf.tsFim; delete laf.motivo;
+      registarReversao(mv, det);
+      return "Movimento anulado. A lata voltou a " + voltaf + ".";
+    }
+  });
+}
+function reporEntrada(mv){
+  var idx = -1;
+  for(var i=0;i<E.registo.length;i++){
+    if(E.registo[i].tipo === "anulacao" && E.registo[i].ts === mv.regTs){ idx = i; break; }
+  }
+  if(idx < 0) return;
+  var r = E.registo[idx];
+  if(!r.arquivo || !r.arquivo.lote){
+    toast("Esta anulação é anterior ao arquivo de dados e não pode ser reposta.");
+    return;
+  }
+  if(loteDe(r.arquivo.lote.id)){ toast("Esta entrada já está reposta em stock."); return; }
+  pedirAdmin({
+    titulo: "Repor entrada anulada",
+    corpo: '<p>Repor em stock a entrada de <b>' + (r.qtd || 0) + '</b> latas de <b>' + esc(r.descricao) +
+           '</b>, lote <b class="mono">' + esc(r.lote) + '</b>, anulada a ' + esc(pt(r.data)) +
+           ' por ' + esc(r.operador || "—") + '?</p>' +
+           '<div class="caixa-info">As latas voltam com o estado que tinham no momento da anulação.</div>',
+    confirmar: "Repor entrada",
+    mutar: function(){
+      var idxf = -1;
+      for(var i=0;i<E.registo.length;i++){
+        if(E.registo[i].tipo === "anulacao" && E.registo[i].ts === mv.regTs){ idxf = i; break; }
+      }
+      if(idxf < 0) return false;
+      var rf = E.registo[idxf];
+      if(!rf.arquivo || !rf.arquivo.lote) return false;
+      if(loteDe(rf.arquivo.lote.id)){ toast("Esta entrada já está reposta em stock."); return false; }
+      E.lotes.unshift(rf.arquivo.lote);
+      for(var k=0;k<rf.arquivo.latas.length;k++) E.latas.push(rf.arquivo.latas[k]);
+      E.registo.splice(idxf, 1);
+      registarReversao(mv, "Reposta a entrada anulada a " + pt(rf.data) + " por " + (rf.operador || "—"));
+      return "Entrada reposta em stock.";
+    }
+  });
+}
+/* ============ histórico ============ */
+var ROTULO = {entrada:"Entrada", abertura:"Abertura", consumo:"Fecho", sucata:"Sucatagem",
+              anulacao:"Entrada anulada", reversao:"Movimento anulado"};
+
+// Os movimentos são derivados dos próprios lotes e latas — não de um registo
+// paralelo — para nunca poderem divergir do stock. As anulações são a exceção:
+// apagam os dados, por isso ficam guardadas em E.registo.
+function movimentos(){
+  var m = [], i, j;
+  for(i=0;i<E.lotes.length;i++){
+    var lt = E.lotes[i];
+    m.push({tipo:"entrada", data:soData(lt.dataRececao), ts:lt.tsRececao || "", loteId:lt.id,
+            codInterno:lt.codInterno, descricao:lt.descricao, lote:lt.lote,
+            qtd:latasDoLote(lt.id).length, operador:lt.operador,
+            detalhe:"Validade " + pt(lt.validade) + (lt.volume ? " · " + lt.volume + " por lata" : "") +
+                    (lt.obs ? " · " + lt.obs : "")});
+  }
+  for(j=0;j<E.latas.length;j++){
+    var la = E.latas[j], lo = loteDe(la.loteId);
+    if(!lo) continue;
+    var base = {codInterno:lo.codInterno, descricao:lo.descricao, lote:lo.lote, qtd:1,
+                loteId:lo.id, lataId:la.id};
+    if(la.dataAbertura){
+      var lim = limiteAberta(la, lo);
+      m.push(Object.assign({}, base, {tipo:"abertura", data:soData(la.dataAbertura),
+        ts:la.tsAbertura || "", operador:la.opAbertura,
+        detalhe:"Utilizar até " + pt(lim),
+        bloqueio: la.estado === "terminada" ? "Anule primeiro o fecho"
+                : la.estado === "sucatada" ? "Anule primeiro a sucatagem" : ""}));
+    }
+    if(la.estado === "terminada" && la.dataFim){
+      m.push(Object.assign({}, base, {tipo:"consumo", data:soData(la.dataFim),
+        ts:la.tsFim || "", operador:la.opFim, detalhe:"Lata consumida"}));
+    }
+    if(la.estado === "sucatada" && la.dataFim){
+      m.push(Object.assign({}, base, {tipo:"sucata", data:soData(la.dataFim),
+        ts:la.tsFim || "", operador:la.opFim, detalhe:la.motivo || "Sucatada"}));
+    }
+  }
+  for(i=0;i<E.registo.length;i++){
+    var r = E.registo[i];
+    if(r.tipo === "anulacao"){
+      m.push({tipo:"anulacao", data:r.data || soData(r.ts), ts:r.ts || "", regTs:r.ts,
+              codInterno:r.codInterno || "—", descricao:r.descricao || r.texto || "—",
+              lote:r.lote || "—", qtd:r.qtd || 0, operador:r.operador,
+              detalhe:r.motivo ? ("Entrada anulada — " + r.motivo) : "Entrada anulada",
+              bloqueio: (r.arquivo && r.arquivo.lote) ? "" : "Anulação antiga, sem dados para repor"});
+    }else if(r.tipo === "reversao"){
+      m.push({tipo:"reversao", data:r.data || soData(r.ts), ts:r.ts || "", regTs:r.ts,
+              codInterno:r.codInterno || "—", descricao:r.descricao || "—",
+              lote:r.lote || "—", qtd:r.qtd || "", operador:r.operador,
+              detalhe:r.detalhe || ""});
+    }
+  }
+  m.sort(function(a,b){
+    if(a.data !== b.data) return a.data < b.data ? 1 : -1;   // mais recente primeiro
+    if(a.ts && b.ts) return a.ts < b.ts ? 1 : -1;
+    if(a.ts) return -1;
+    if(b.ts) return 1;
+    return 0;
+  });
+  return m;
+}
+var filtroHist = "todos";
+var HIST = [];                  // lista visível no histórico, para as ações de anular
+function desenharHistorico(){
+  var q = $("qHistorico").value.trim();
+  var todos = movimentos();
+  var itens = todos.filter(function(mv){
+    if(filtroHist === "anulacao"){
+      if(mv.tipo !== "anulacao" && mv.tipo !== "reversao") return false;
+    }else if(filtroHist !== "todos" && mv.tipo !== filtroHist) return false;
+    return combina((mv.descricao||"") + " " + (mv.codInterno||"") + " " + (mv.lote||"") + " " +
+                   (mv.operador||"") + " " + ROTULO[mv.tipo], q);
+  });
+  HIST = itens;
+  var cont = {entrada:0, abertura:0, consumo:0, sucata:0, anulacao:0, reversao:0};
+  todos.forEach(function(mv){ cont[mv.tipo]++; });
+  var n = $("listaHistorico");
+  function pl(n, um, muitos){ return '<span><b>' + n + '</b> ' + (n === 1 ? um : muitos) + '</span>'; }
+  var resumo = '<div class="resumo-hist">' +
+    pl(todos.length, "movimento", "movimentos") +
+    pl(cont.entrada, "entrada", "entradas") +
+    pl(cont.abertura, "abertura", "aberturas") +
+    pl(cont.consumo, "fecho", "fechos") +
+    pl(cont.sucata, "sucatagem", "sucatagens") +
+    (cont.anulacao ? pl(cont.anulacao, "entrada anulada", "entradas anuladas") : "") +
+    (cont.reversao ? pl(cont.reversao, "movimento anulado", "movimentos anulados") : "") +
+    '</div>';
+  if(!itens.length){
+    n.innerHTML = resumo + '<div class="vazio"><h3>Sem movimentos</h3><p>' +
+      (q || filtroHist !== "todos"
+        ? "Nenhum movimento corresponde ao que procura. Limpe a pesquisa ou escolha Todos."
+        : "Ainda não há movimentos registados. Aparecem aqui à medida que forem dando entradas, abrindo e fechando latas.") +
+      '</p></div>';
+    return;
+  }
+  var h = resumo +
+    '<p class="nota-admin">Anular um movimento repõe o estado anterior da lata e exige o código de administrador. A anulação fica registada no histórico.</p>' +
+    '<div class="tabela-env" data-dyn="1"><table class="hist"><thead><tr>' +
+    '<th>Quando</th><th>Movimento</th><th>Tinta</th><th>Lote</th><th>Latas</th><th>Operador</th><th>Detalhe</th><th></th>' +
+    '</tr></thead><tbody>';
+  for(var i=0;i<Math.min(itens.length, 400);i++){
+    var mv = itens[i];
+    var hora = mv.ts ? new Date(mv.ts) : null;
+    var hh = "";
+    if(hora && !isNaN(hora.getTime())){
+      hh = ("0"+hora.getHours()).slice(-2) + ":" + ("0"+hora.getMinutes()).slice(-2);
+    }
+    var acao = "";
+    if(mv.tipo === "reversao"){
+      acao = "";
+    }else if(mv.bloqueio){
+      acao = '<span class="bloq-mov">' + esc(mv.bloqueio) + '</span>';
+    }else{
+      acao = '<button class="btn fantasma pequeno" data-anularmov="' + i + '">' +
+             (mv.tipo === "anulacao" ? "Repor" : "Anular") + '</button>';
+    }
+    h += '<tr>' +
+      '<td class="quando">' + esc(pt(mv.data)) + (hh ? '<small>' + hh + '</small>' : '') + '</td>' +
+      '<td><span class="mov ' + mv.tipo + '">' + ROTULO[mv.tipo] + '</span></td>' +
+      '<td class="artigo"><b>' + esc(mv.descricao) + '</b><small>' + esc(mv.codInterno) + '</small></td>' +
+      '<td class="mono">' + esc(mv.lote) + '</td>' +
+      '<td class="num">' + (mv.qtd || "") + '</td>' +
+      '<td>' + esc(mv.operador || "—") + '</td>' +
+      '<td class="detalhe">' + esc(mv.detalhe || "") + '</td>' +
+      '<td class="acao-mov">' + acao + '</td>' +
+    '</tr>';
+  }
+  h += '</tbody></table></div>';
+  if(itens.length > 400){
+    h += '<p style="font-size:12.5px;color:var(--ink-3);margin:10px 2px 0">A mostrar os 400 movimentos mais recentes de ' +
+         itens.length + '. Exporte o CSV para os ver todos.</p>';
+  }
+  n.innerHTML = h;
+}
+
+/* ============ desenho ============ */
+function desenhar(){
+  desenharDatalist();
+  desenharRececoes();
+  desenharFechadas();
+  desenharAbertas();
+  desenharFora();
+  desenharHistorico();
+  desenharContadores();
+  mostrarModo();
+  desenharTamanho();
+}
+function desenharContadores(){
+  var nF = 0;
+  for(var i=0;i<E.latas.length;i++){ if(E.latas[i].estado === "fechada") nF++; }
+  var nA = abertasDentro().length;
+  var nX = abertasFora().length;
+  põe("cnt-fechadas", nF); põe("cnt-abertas", nA); põe("cnt-fora", nX);
+  var t = document.getElementById("t-fora");
+  if(nX > 0) t.classList.add("alerta"); else t.classList.remove("alerta");
+  var fx = 0, ff = fechadasFora();
+  for(var k=0;k<ff.length;k++) fx += ff[k].qtd;
+  põe("cnt-fechadas-fora", fx);
+  document.title = (nX > 0 ? "(" + nX + ") " : "") + "Controlo de Tintas";
+}
+function põe(idn, n){
+  var e = $(idn);
+  e.textContent = n; e.hidden = (n === 0);
+}
+function mostrarModo(){
+  var n = $("avisoModo"); if(!n) return;
+  if(somenteLeitura){
+    n.innerHTML = '<div class="aviso mau"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span><b>Ligação só de leitura</b>Pode consultar o stock, mas os registos não são guardados. Peça acesso de edição a quem partilhou esta página.</span></div>';
+    return;
+  }
+  if(modo === "local"){
+    n.innerHTML = '<div class="aviso"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9"/></svg><span><b>A guardar só neste dispositivo</b>Os registos não estão a chegar aos outros postos. Faça uma cópia de segurança antes de fechar a página.</span></div>';
+    return;
+  }
+  n.innerHTML = "";
+}
+function desenharTamanho(){
+  var kb = Math.round(JSON.stringify(E).length / 1024);
+  var n = E.lotes.filter(function(l){ return l.foto; }).length;
+  var tam = kb >= 1024 ? (kb/1024).toFixed(1) + " MB" : kb + " KB";
+  $("infoTamanho").textContent = tam + " de dados · " + n + (n === 1 ? " fotografia" : " fotografias");
+}
+function desenharDatalist(){
+  var h = "";
+  for(var i=0;i<E.catalogo.length;i++){
+    var c = E.catalogo[i];
+    h += '<option value="' + esc(c.codFornecedor) + '">' + esc(c.descricao) + '</option>';
+  }
+  $("dlCodForn").innerHTML = h;
+}
+
+function desenharRececoes(){
+  var n = $("listaRec");
+  if(!E.lotes.length){
+    n.innerHTML = '<div class="vazio"><h3>Ainda sem entradas</h3><p>Registe a primeira receção no formulário ao lado. Cada entrada cria em stock tantas latas fechadas quanto a quantidade indicada.</p></div>';
+    return;
+  }
+  var h = '<div class="rec-lista" data-dyn="1">';
+  for(var i=0;i<Math.min(E.lotes.length, 60);i++){
+    var lt = E.lotes[i];
+    var fech = latasDoLote(lt.id, "fechada").length;
+    var tot = latasDoLote(lt.id).length;
+    h += '<div class="rec-item">' +
+      (lt.foto ? '<img class="mini" src="' + lt.foto + '" alt="Etiqueta do lote ' + esc(lt.lote) + '">'
+               : '<div class="mini sem">sem<br>foto</div>') +
+      '<div style="min-width:0">' +
+        '<div style="font-weight:600">' + esc(lt.descricao) + '</div>' +
+        '<div class="dados" style="margin-top:3px">' +
+          '<span><i>Interno</i><b>' + esc(lt.codInterno) + '</b></span>' +
+          '<span><i>Lote</i><b>' + esc(lt.lote) + '</b></span>' +
+          '<span><i>Val.</i><b>' + esc(pt(lt.validade)) + '</b></span>' +
+          '<span><i>Stock</i><b>' + fech + '/' + tot + '</b></span>' +
+        '</div>' +
+        '<div style="font-size:11.5px;color:var(--ink-3);margin-top:3px">' + esc(pt(lt.dataRececao)) + ' · ' + esc(lt.operador || "—") +
+          (lt.obs ? ' · ' + esc(lt.obs) : '') + '</div>' +
+      '</div>' +
+      '<div>' + (podeAnular(lt) ? '<button class="btn fantasma pequeno" data-anular="' + lt.id + '">Anular</button>' : '') + '</div>' +
+    '</div>';
+  }
+  h += '</div>';
+  n.innerHTML = h;
+}
+
+function agruparFechadas(q){
+  var h = hoje(), mapa = {}, ordem = [];
+  for(var i=0;i<E.lotes.length;i++){
+    var lt = E.lotes[i];
+    var disp = latasDoLote(lt.id, "fechada").length;
+    if(!disp) continue;
+    if(!combina(lt.descricao + " " + lt.codInterno + " " + lt.codFornecedor + " " + lt.lote + " " + (lt.fornecedor||""), q)) continue;
+    if(!mapa[lt.codInterno]){ mapa[lt.codInterno] = {cod:lt.codInterno, descricao:lt.descricao, fornecedor:lt.fornecedor, lotes:[]}; ordem.push(lt.codInterno); }
+    mapa[lt.codInterno].lotes.push({lote:lt, disp:disp, expirado: !!(soData(lt.validade) && soData(lt.validade) < h)});
+  }
+  var r = [];
+  for(var k=0;k<ordem.length;k++){
+    var g = mapa[ordem[k]];
+    g.lotes.sort(function(a,b){
+      var va = soData(a.lote.validade) || "9999-12-31", vb = soData(b.lote.validade) || "9999-12-31";
+      return va < vb ? -1 : va > vb ? 1 : 0;
+    });
+    g.permitido = null;
+    for(var j=0;j<g.lotes.length;j++){ if(!g.lotes[j].expirado){ g.permitido = g.lotes[j].lote.id; break; } }
+    r.push(g);
+  }
+  r.sort(function(a,b){ return norm(a.descricao) < norm(b.descricao) ? -1 : 1; });
+  return r;
+}
+function desenharFechadas(){
+  var q = $("qFechadas").value.trim();
+  var gs = agruparFechadas(q);
+  var n = $("listaFechadas");
+  var fx = fechadasFora();
+  var topo = "";
+  if(fx.length){
+    var tot = 0; for(var z=0;z<fx.length;z++) tot += fx[z].qtd;
+    topo = '<div class="aviso mau"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 9v4.5M12 17v.01"/><path d="M10.3 4.2 2.9 17.4A2 2 0 0 0 4.6 20.4h14.8a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/></svg><span><b>' + tot + (tot===1?' lata fechada fora de validade':' latas fechadas fora de validade') + '</b>Estão bloqueadas para abertura. Sucate-as no separador <b style="display:inline">Fora de validade</b>.</span></div>';
+  }
+  if(!gs.length){
+    n.innerHTML = topo + '<div class="vazio"><h3>' + (q ? "Sem resultados" : "Sem latas fechadas") + '</h3><p>' +
+      (q ? "Nenhuma lata fechada corresponde a &laquo;" + esc(q) + "&raquo;." : "Assim que registar entradas na receção, as latas fechadas aparecem aqui.") + '</p></div>';
+    return;
+  }
+  var h = topo + '<div class="lista" data-dyn="1">';
+  for(var i=0;i<gs.length;i++){
+    var g = gs[i];
+    h += '<article class="tinta"><div class="tinta-cab">' +
+      '<div class="cod mono">' + esc(g.cod) + '</div><h3>' + esc(g.descricao) + '</h3>' +
+      '<div class="sub">' + g.lotes.length + (g.lotes.length===1?' lote em stock':' lotes em stock') +
+      (g.fornecedor ? ' · ' + esc(g.fornecedor) : '') + '</div></div>';
+    for(var j=0;j<g.lotes.length;j++){
+      var it = g.lotes[j], lt = it.lote;
+      var s = severidade(soData(lt.validade));
+      var permitida = (g.permitido === lt.id);
+      var cls = it.expirado ? "st-bad" : (permitida ? "st-" + s.cls : "st-bloq");
+      h += '<div class="linha ' + cls + (permitida || it.expirado ? '' : ' st-bloq') + '">' +
+        '<div class="faixa"></div><div class="linha-corpo">' +
+          '<div class="dados">' +
+            '<span><i>Lote</i><b>' + esc(lt.lote) + '</b></span>' +
+            '<span><i>Validade</i><b>' + esc(pt(lt.validade)) + '</b></span>' +
+            '<span><i>Disponíveis</i><b>' + it.disp + '</b></span>' +
+            (lt.volume ? '<span><i>Volume</i><b>' + esc(lt.volume) + '</b></span>' : '') +
+            '<span><i>Fornecedor</i><b>' + esc(lt.codFornecedor) + '</b></span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+            '<span class="selo ' + (it.expirado ? "bad" : s.sel) + '">' + esc(s.txt) + '</span>' +
+            (permitida ? '<span class="selo destaque">Lote a usar primeiro</span>' : '') +
+          '</div>' +
+          (it.expirado
+            ? '<div class="nota-bloq"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Fora de validade — não pode ser aberta.</div>'
+            : (permitida ? ''
+              : '<div class="nota-bloq"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Bloqueado — abra primeiro o lote com validade mais próxima.</div>')) +
+        '</div>' +
+        '<div class="linha-acao">' +
+          (permitida ? '<button class="btn pri" data-abrir="' + lt.id + '">Abrir lata</button>' : '') +
+          (it.expirado ? '<button class="btn perigo pequeno" data-sucatalote="' + lt.id + '">Sucatear</button>' : '') +
+        '</div></div>';
+    }
+    h += '</article>';
+  }
+  n.innerHTML = h + '</div>';
+}
+
+function desenharAbertas(){
+  var q = $("qAbertas").value.trim();
+  var itens = abertasDentro().filter(function(o){
+    var lt = o.lote || {};
+    return combina((lt.descricao||"") + " " + (lt.codInterno||"") + " " + (lt.codFornecedor||"") + " " + (lt.lote||""), q);
+  });
+  itens.sort(function(a,b){
+    var la = limiteAberta(a.lata, a.lote), lb = limiteAberta(b.lata, b.lote);
+    return la < lb ? -1 : la > lb ? 1 : 0;
+  });
+  var n = $("listaAbertas");
+  if(!itens.length){
+    n.innerHTML = '<div class="vazio"><h3>' + (q ? "Sem resultados" : "Nenhuma lata aberta") + '</h3><p>' +
+      (q ? "Nenhuma lata aberta corresponde a &laquo;" + esc(q) + "&raquo;." : "As latas abertas dentro de validade aparecem aqui para dar baixa quando acabarem.") + '</p></div>';
+    return;
+  }
+  var h = '<div class="lista" data-dyn="1">';
+  for(var i=0;i<itens.length;i++){
+    var la = itens[i].lata, lt = itens[i].lote || {};
+    var lim = limiteAberta(la, lt), s = severidade(lim);
+    var porAbertura = maisMeses(la.dataAbertura, MESES_APOS_ABERTURA);
+    var regra = (soData(lt.validade) && soData(lt.validade) <= porAbertura) ? "validade do fabricante" : "6 meses após abertura";
+    h += '<article class="tinta"><div class="linha st-' + s.cls + '"><div class="faixa"></div>' +
+      '<div class="linha-corpo">' +
+        '<div style="font-weight:600;font-size:15px">' + esc(lt.descricao || "—") + '</div>' +
+        '<div class="dados">' +
+          '<span><i>Interno</i><b>' + esc(lt.codInterno || "—") + '</b></span>' +
+          '<span><i>Lote</i><b>' + esc(lt.lote || "—") + '</b></span>' +
+          '<span><i>Aberta</i><b>' + esc(pt(la.dataAbertura)) + '</b></span>' +
+          '<span><i>Por</i><b>' + esc(la.opAbertura || "—") + '</b></span>' +
+          '<span><i>Usar até</i><b>' + esc(pt(lim)) + '</b></span>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+          '<span class="selo ' + s.sel + '">' + esc(s.txt) + '</span>' +
+          '<span class="selo neutro">Limite por ' + regra + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="linha-acao"><button class="btn pri" data-terminar="' + la.id + '">Lata acabada</button></div>' +
+    '</div></article>';
+  }
+  n.innerHTML = h + '</div>';
+}
+
+function desenharFora(){
+  var ab = abertasFora();
+  ab.sort(function(a,b){
+    var la = limiteAberta(a.lata, a.lote), lb = limiteAberta(b.lata, b.lote);
+    return la < lb ? -1 : 1;
+  });
+  var fe = fechadasFora();
+  var n = $("listaFora");
+  if(!ab.length && !fe.length){
+    n.innerHTML = '<div class="vazio"><h3>Nada fora de validade</h3><p>Todas as latas em stock e em utilização estão dentro do prazo. Este separador fica vermelho assim que alguma passar o limite.</p></div>';
+    return;
+  }
+  var h = '<div data-dyn="1">';
+  if(ab.length){
+    h += '<div class="aviso mau"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 9v4.5M12 17v.01"/><path d="M10.3 4.2 2.9 17.4A2 2 0 0 0 4.6 20.4h14.8a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/></svg><span><b>' + ab.length + (ab.length===1 ? ' lata aberta fora de validade' : ' latas abertas fora de validade') + '</b>Não podem ser aplicadas. Retire-as da linha e sucate-as.</span></div>';
+    h += '<h2 class="sec-tit">Latas abertas fora de validade</h2><div class="lista">';
+    for(var i=0;i<ab.length;i++){
+      var la = ab[i].lata, lt = ab[i].lote || {};
+      var lim = limiteAberta(la, lt), s = severidade(lim);
+      h += '<article class="tinta"><div class="linha st-bad"><div class="faixa"></div>' +
+        '<div class="linha-corpo">' +
+          '<div style="font-weight:600;font-size:15px">' + esc(lt.descricao || "—") + '</div>' +
+          '<div class="dados">' +
+            '<span><i>Interno</i><b>' + esc(lt.codInterno || "—") + '</b></span>' +
+            '<span><i>Lote</i><b>' + esc(lt.lote || "—") + '</b></span>' +
+            '<span><i>Aberta</i><b>' + esc(pt(la.dataAbertura)) + '</b></span>' +
+            '<span><i>Limite</i><b>' + esc(pt(lim)) + '</b></span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+            '<span class="selo bad">' + esc(s.txt) + '</span>' +
+            '<span class="selo neutro">' + esc(motivoFora(la, lt)) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="linha-acao"><button class="btn perigo" data-sucata="' + la.id + '">Sucatear</button></div>' +
+      '</div></article>';
+    }
+    h += '</div>';
+  }
+  if(fe.length){
+    var tot = 0; for(var z=0;z<fe.length;z++) tot += fe[z].qtd;
+    h += '<h2 class="sec-tit" style="margin-top:22px">Latas fechadas fora de validade · ' + tot + '</h2><div class="lista">';
+    for(var j=0;j<fe.length;j++){
+      var g = fe[j].lote, s2 = severidade(soData(g.validade));
+      h += '<article class="tinta"><div class="linha st-bad"><div class="faixa"></div>' +
+        '<div class="linha-corpo">' +
+          '<div style="font-weight:600;font-size:15px">' + esc(g.descricao) + '</div>' +
+          '<div class="dados">' +
+            '<span><i>Interno</i><b>' + esc(g.codInterno) + '</b></span>' +
+            '<span><i>Lote</i><b>' + esc(g.lote) + '</b></span>' +
+            '<span><i>Validade</i><b>' + esc(pt(g.validade)) + '</b></span>' +
+            '<span><i>Latas</i><b>' + fe[j].qtd + '</b></span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+            '<span class="selo bad">' + esc(s2.txt) + '</span>' +
+            '<span class="selo neutro">Nunca abertas</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="linha-acao"><button class="btn perigo" data-sucatalote="' + g.id + '">Sucatear ' + fe[j].qtd + '</button></div>' +
+      '</div></article>';
+    }
+    h += '</div>';
+  }
+  n.innerHTML = h + '</div>';
+}
+
+/* ============ eventos delegados ============ */
+document.addEventListener("click", function(ev){
+  var t = ev.target.closest ? ev.target.closest("button") : null;
+  if(!t) return;
+  var a;
+  if((a = t.getAttribute("data-abrir"))) return abrirLata(a);
+  if((a = t.getAttribute("data-terminar"))) return terminarLata(a);
+  if((a = t.getAttribute("data-sucata"))) return sucatearLata(a);
+  if((a = t.getAttribute("data-sucatalote"))) return sucatearLote(a);
+  if((a = t.getAttribute("data-anular"))) return anularEntrada(a);
+  if((a = t.getAttribute("data-anularmov")) !== null && a !== undefined && a !== "") return anularMovimento(HIST[+a]);
+});
+$("qFechadas").addEventListener("input", desenharFechadas);
+$("qAbertas").addEventListener("input", desenharAbertas);
+$("qHistorico").addEventListener("input", desenharHistorico);
+$("filtrosHist").addEventListener("click", function(ev){
+  var b = ev.target.closest ? ev.target.closest(".fchip") : null;
+  if(!b) return;
+  filtroHist = b.getAttribute("data-filtro");
+  var cs = this.querySelectorAll(".fchip");
+  for(var i=0;i<cs.length;i++){
+    cs[i].setAttribute("aria-pressed", cs[i] === b ? "true" : "false");
+  }
+  desenharHistorico();
+});
+$("operador").addEventListener("change", function(){
+  try{ localStorage.setItem("operador-tintas", operador()); }catch(e){}
+});
+
+/* ============ catálogo / cópias ============ */
+$("btnImportCat").addEventListener("click", function(){
+  perguntar({
+    titulo: "Importar catálogo de tintas",
+    corpo: '<p>Cole as linhas do catálogo, uma por linha, separadas por <b>;</b> ou tabulação:</p>' +
+      '<div class="caixa-info mono">codFornecedor ; codInterno ; descrição ; fornecedor</div>' +
+      '<textarea id="txtCat" rows="8" placeholder="RAL7016-2K;TNT-0042;Esmalte poliuretano RAL 7016 acetinado;Hempel"></textarea>' +
+      '<p style="font-size:12.5px;color:var(--ink-3);margin:0">Uma linha de cabeçalho é ignorada. Códigos já existentes são atualizados.</p>',
+    confirmar: "Importar",
+    aoConfirmar: function(){}
+  });
+  var acoes = $("dlgAcoes").querySelectorAll("button");
+  acoes[1].onclick = function(){
+    var txt = $("txtCat").value;
+    $("dlg").close();
+    importarCatalogo(txt);
+  };
+});
+function importarCatalogo(txt){
+  operar(function(){
+    var linhas = String(txt||"").split(/\r?\n/), novos = 0, atual = 0;
+    for(var i=0;i<linhas.length;i++){
+      var L = linhas[i].trim(); if(!L) continue;
+      var p = L.split(/[;\t]/);
+      if(p.length < 2) continue;
+      var cf = (p[0]||"").trim(), ci = (p[1]||"").trim();
+      if(!cf || !ci) continue;
+      if(i === 0 && /c[oó]d/i.test(cf)) continue;
+      var d = (p[2]||"").trim(), f = (p[3]||"").trim();
+      var ex = doCatalogo(cf);
+      if(ex){ ex.codInterno = ci; if(d) ex.descricao = d; if(f) ex.fornecedor = f; atual++; }
+      else { E.catalogo.push({codFornecedor:cf, codInterno:ci, descricao:d, fornecedor:f}); novos++; }
+    }
+    if(!novos && !atual){ toast("Nenhuma linha válida encontrada."); return false; }
+    registar("catalogo", novos + " novos, " + atual + " atualizados");
+    return novos + " artigos novos, " + atual + " atualizados.";
+  });
+}
+
+function guardarFicheiro(nome, conteudo){
+  descarregarNav(nome, conteudo);
+}
+function descarregarNav(nome, conteudo){
+  try{
+    var b = new Blob([conteudo], {type:"text/plain;charset=utf-8"});
+    var u = URL.createObjectURL(b);
+    var a = document.createElement("a"); a.href = u; a.download = nome;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
+  }catch(e){ toast("Não foi possível transferir o ficheiro neste dispositivo."); }
+}
+$("btnExportCsv").addEventListener("click", function(){
+  var l = ["codInterno;descricao;codFornecedor;fornecedor;lote;validade;estado;dataAbertura;usarAte;dataFim;operadorAbertura;operadorFim;motivo"];
+  for(var i=0;i<E.latas.length;i++){
+    var la = E.latas[i], lt = loteDe(la.loteId) || {};
+    var lim = la.dataAbertura ? limiteAberta(la, lt) : "";
+    l.push([lt.codInterno, lt.descricao, lt.codFornecedor, lt.fornecedor, lt.lote, lt.validade,
+            la.estado, la.dataAbertura||"", lim, la.dataFim||"", la.opAbertura||"", la.opFim||"", la.motivo||""]
+      .map(function(x){ return String(x==null?"":x).replace(/[;\r\n]/g," "); }).join(";"));
+  }
+  guardarFicheiro("stock-tintas-" + hoje() + ".csv", "\ufeff" + l.join("\r\n"));
+});
+$("btnExportHist").addEventListener("click", function(){
+  var l = ["data;hora;movimento;codInterno;descricao;lote;latas;operador;detalhe"];
+  var mv = movimentos();
+  for(var i=0;i<mv.length;i++){
+    var m = mv[i], d = m.ts ? new Date(m.ts) : null, hh = "";
+    if(d && !isNaN(d.getTime())) hh = ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+    l.push([m.data, hh, ROTULO[m.tipo], m.codInterno, m.descricao, m.lote, m.qtd, m.operador, m.detalhe]
+      .map(function(x){ return String(x==null?"":x).replace(/[;\r\n]/g," "); }).join(";"));
+  }
+  guardarFicheiro("historico-tintas-" + hoje() + ".csv", "\ufeff" + l.join("\r\n"));
+});
+$("btnBackup").addEventListener("click", function(){
+  guardarFicheiro("copia-tintas-" + hoje() + ".json", JSON.stringify(E));
+});
+$("btnRestaurar").addEventListener("click", function(){
+  perguntar({
+    titulo: "Restaurar cópia de segurança",
+    corpo: '<p>Cole o conteúdo do ficheiro <b class="mono">copia-tintas-….json</b>. Substitui todos os dados atuais.</p>' +
+      '<textarea id="txtRest" rows="6" placeholder="{&quot;versao&quot;:1,…}"></textarea>',
+    confirmar: "Restaurar", perigo: true, aoConfirmar: function(){}
+  });
+  var acoes = $("dlgAcoes").querySelectorAll("button");
+  acoes[1].onclick = function(){
+    var v = $("txtRest").value;
+    $("dlg").close();
+    try{
+      var o = normalizar(JSON.parse(v));
+      if(!o.lotes.length && !o.catalogo.length) throw 0;
+      operar(function(){ E = o; registar("restauro", "cópia restaurada"); return "Cópia restaurada."; });
+    }catch(e){ toast("Ficheiro inválido. Verifique o conteúdo colado."); }
+  };
+});
+
+/* ============ arranque ============ */
+function tentarSincronizarPendente(){
+  if(!GH_TEM_TOKEN || A_OPERAR) return;
+  A_OPERAR = true;
+  marcar("ocupado", "A sincronizar registos pendentes…");
+  ghEscrever(E, shaAtual).then(function(novoSha){
+    shaAtual = novoSha; A_OPERAR = false; marcar("ok", "Guardado"); mostrarModo(); desenhar();
+    toast("Sincronizados os registos que tinham ficado só neste dispositivo.");
+  }).catch(function(err){
+    A_OPERAR = false;
+    if(err && err.codigo === "conflito"){
+      ghLer().then(function(atual){
+        if(atual){ E = atual.dados; shaAtual = atual.sha; gravarLocal(); desenhar(); }
+        marcar("ok", "Ligado"); mostrarModo();
+        toast("Havia registos só neste dispositivo, mas outro posto já tinha gravado entretanto. A mostrar a versão partilhada mais recente.");
+      });
+    }else{
+      marcar("local", "Guardado só neste dispositivo"); mostrarModo();
+    }
+  });
+}
+(function iniciar(){
+  var loc = lerLocal();
+  E = loc || VAZIO;
+  try{ $("operador").value = localStorage.getItem("operador-tintas") || ""; }catch(e){}
+  try{
+    var ab = sessionStorage.getItem("aba-ativa");
+    if(ab) abaAtiva = ab;
+  }catch(e){}
+  irPara(abaAtiva);
+  desenhar();
+  marcar("ocupado", "A ligar…");
+
+  if(!GH.owner || !GH.repo){
+    marcar("erro", "Sem configuração");
+    toast("Falta o ficheiro config.js com os dados do repositório.");
+    return;
+  }
+
+  ghLer().then(function(remoto){
+    var pendente = false;
+    if(remoto){
+      shaAtual = remoto.sha;
+      if(!loc || remoto.dados.carimbo >= loc.carimbo){ E = remoto.dados; }
+      else{ pendente = true; }             // este dispositivo tem registos mais recentes por partilhar
+    }else{
+      shaAtual = null;                     // ainda não existe estado.json — a primeira gravação cria-o
+    }
+    desenhar();
+    if(!GH_TEM_TOKEN){
+      somenteLeitura = true; marcar("erro", "Só de leitura");
+      toast("Sem token configurado — pode consultar o stock, mas não gravar.");
+      mostrarModo();
+    }else if(pendente){
+      tentarSincronizarPendente();
+    }else{
+      marcar("ok", "Ligado"); mostrarModo();
+    }
+  }).catch(function(){
+    marcar("local", "Sem ligação ao GitHub");
+    toast("Não foi possível ler o GitHub agora. A mostrar os últimos dados guardados neste dispositivo.");
+    mostrarModo();
+  });
+})();
+
+})();
+</script>
