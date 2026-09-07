@@ -7,5 +7,5 @@ window.CONFIG_GITHUB = {
   repo: "controlo-tintas-efaflu",
   path: "dados/estado.json",
   branch: "main",
-  token: "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"
+  token: "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"
 };
